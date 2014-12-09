@@ -15,7 +15,9 @@ supplied client trigger monitor (runmqtmc).
 
 Details
 =======
-Initial Author: Jeff Lowrey, IBM Software Services for WebSphere
+Initial Authors: 
+  Wayne Schutz
+  Jeff Lowrey, IBM Software Services for WebSphere
 
 Original Released: 07 May 1998
 Released to GitHub: Dec 2014

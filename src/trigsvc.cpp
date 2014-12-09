@@ -1,10 +1,20 @@
+/*******************************************************************************
+ * Copyright (c) 1998, 2014 IBM Corporation and other Contributors.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   Jeff Lowrey, Wayne Schutz - Initial Contribution
+ */
+ 
 /* ******************************************************************/
 /* TrigSvc.cpp                                                      */
-/* (C) Copyright IBM Corp.1997, 2006                                */
 /********************************************************************/
 //
-// Current Maintainer: Jeff Lowrey
-// Original Author: Wayne M. Schutz
+
 //
 // version 1.00 -- 04 May 1998 -- initial version.
 //              A version of the trigger monitor that can run as a NT Service.
@@ -74,6 +84,7 @@
 //          see readme.txt
 // version 1.5.0 -- Jeff Lowrey now maintainer.
 //          see readme.txt for all future change log entries.
+
 #include <windows.h>
 #include <winbase.h>
 #include <Wincrypt.h>

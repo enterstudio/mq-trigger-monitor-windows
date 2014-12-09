@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * Copyright (c) 1998, 2014 IBM Corporation and other Contributors.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   Jeff Lowrey, Wayne Schutz - Initial Contribution
+ */
+ 
 ////////////////////////////////////////////////////////////////////////////////////
 // This program install the trigsvc program, creates the necessary registry entries
 // and registers the message resources with the NT Event Log facility
