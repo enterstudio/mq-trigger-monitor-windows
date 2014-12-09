@@ -21,8 +21,7 @@
 *.dylib
 
 # Executables
-*.exe
-*.out
+# .exe will be allowed for this project
 *.app
 *.i*86
 *.x86_64
