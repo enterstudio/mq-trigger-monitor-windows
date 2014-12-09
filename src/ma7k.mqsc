@@ -1,0 +1,31 @@
+***********************************
+*
+*
+* Sample mqsc for ma7k:
+*
+*
+* to run test: amqsreq MA7K.TEST
+*
+*
+*
+**********************************
+
+define qlocal(ma7k.test) +
+       trigger trigtype(first)  +
+       process(ma7k.test) +
+       initq(system.default.initiation.queue) +
+       replace
+
+define process(ma7k.test) +
+**********************************
+*
+* Change this to the path of your installed WebSphere MQ samples !!!!!!
+* (if you don't understand the Progra~1 specification, see the end of the readme.txt file)
+**********************************
+       applicid('C:\Progra~1\IBM\WebSph~1\Tools\c\Samples\Bin\amqsechc.exe') +
+*       applicid('c:\mqm\tools\c\samples\bin\amqsechc.exe') +
+       replace
+
+define qmodel(SYSTEM.SAMPLE.REPLY) +
+       deftype(tempdyn) +
+       replace
