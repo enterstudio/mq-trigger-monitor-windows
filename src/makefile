@@ -75,6 +75,7 @@ msgs.res: msgs.rc
 
 .obj.exe:
    $(LC) $(LFLAGS) getServiceFile.obj $*.obj /out:$*.exe
+	copy $*.exe ..\bin
 
 
 .mc.h:
