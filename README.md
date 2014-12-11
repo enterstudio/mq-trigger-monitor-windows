@@ -13,6 +13,13 @@ Customers wishing to automate the start-up of an IBM MQ Client trigger monitor o
 Windows should consider using this program. This service could be started instead of the 
 supplied client trigger monitor (runmqtmc).
 
+Pull requests
+=============
+Contributions to this package can be accepted under the terms of the 
+IBM Contributor License Agreement, found in the file CLA.md of this repository.
+
+When submitting a pull request, you must include a statement stating you accept the terms in CLA.md.
+
 Details
 =======
 Initial Authors: 
