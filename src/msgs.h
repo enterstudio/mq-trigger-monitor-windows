@@ -1,15 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 1998, 2014 IBM Corporation and other Contributors.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
- *   Jeff Lowrey, Wayne Schutz - Initial Contribution
- */
- 
 //
 //  Values are 32 bit values laid out as follows:
 //
@@ -245,7 +233,16 @@
 //
 // MessageText:
 //
-// Password for user "%1" was decrypted, value is "%2" .
+// Password for user "%1" was decrypted, value is "%2".
 //
 #define DECRYPTED                        ((DWORD)0x40000115L)
+
+//
+// MessageId: DEBUG_MSG
+//
+// MessageText:
+//
+// Debug message "%1".
+//
+#define DEBUG_MSG                        ((DWORD)0x40000116L)
 

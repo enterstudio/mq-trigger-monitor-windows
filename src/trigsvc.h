@@ -13,6 +13,7 @@
 // common defines for IBM WebSphere MQ Trigger Service
 #define DISABLENOTES 1
 #define SERVICEPROGRAM "TrigSvc.exe"
+#define COMMENT "COMMENT"
 #define TRIGGERQUEUENAME "TriggerQueueName"
 #define TRIGGERQUEUEMGRNAME "TriggerQueueMgrName"
 #define SERVICENAME "ServiceName"

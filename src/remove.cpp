@@ -9,15 +9,13 @@
  * Contributors:
  *   Jeff Lowrey, Wayne Schutz - Initial Contribution
  */
- 
+
 //
 // Remove.cpp
 //
 //
 // See trigsvc.cpp for change log
-
 // This program removes all registry entries and definitions for the trigsvc programs
-
 #include <windows.h>
 #include <iostream>
 #include <stdio.h>
@@ -26,117 +24,143 @@
 
 //using namespace std;
 
-int main(int argc, char *argv[])
-{
-  LONG ret;
-  CHAR strBuf[80];
-  SC_HANDLE service, scm;
-  BOOL success;
-  SERVICE_STATUS status;
-  char response[256];
+int main(int argc, char *argv[]) {
+	LONG ret;
+	CHAR strBuf[500];
+	SC_HANDLE service, scm;
+	BOOL success;
+	SERVICE_STATUS status;
+	char response[256];
+	int debug;
 
-  void getServiceName(char *);
-  void getServiceLabel(char *);
+	void getServiceName(char *);
+	void getServiceLabel(char *);
 
-  char serviceName[128];
-  getServiceName(serviceName);
+	char serviceName[128];
+	memset(serviceName, '\0', sizeof(serviceName));
+	getServiceName(serviceName);
+	if (argc > 1 && !strcmp(argv[1], "-d")) {
+		printf("Enabled debug mode\n");
+		debug = 1;
+	}
 
+	printf("This program REMOVES the Registry entries and Service definitions");
+	printf(" for the \"%s\"\n", serviceName);
 
-        printf( "This program REMOVES the Registry entries and Service definitions");
-	printf( " for the \" %s\"\n", serviceName);
+	printf("Enter \"Y\" to continue, anything else to exit.\n");
 
-        printf( "Enter \"Y\" to continue, anything else to exit.\n");
+	fgets(response, sizeof(response), stdin);
+	if (response[0] != 'y' && response[0] != 'Y') {
+		printf("Exiting\n");
+		return 4;
+	}/* End if*/
 
-        fgets(response, sizeof(response), stdin);
-        if (response[0]!='y' && response[0]!='Y') {
-          printf("Exiting\n");
-          return 4;
-        }/* End if*/
+	//
+	// This segment removes the registry entries for event messages
+	//
 
-       //
-  // This segment removes the registry entries for event messages
-  //
+	// build the path for the key
+	strcpy(strBuf, "SYSTEM\\CurrentControlSet\\");
+	strcat(strBuf, "Services\\EventLog\\Application\\");
+	strcat(strBuf, serviceName);
 
+	if (debug) {
+		printf("about to remove key %s and it's children.\n", strBuf);
+	}
+	// delete the key
+	ret = RegDeleteKey(HKEY_LOCAL_MACHINE, strBuf);
+	if (ret != ERROR_SUCCESS) {
+		printf(
+				"Unable to delete key: Ensure that the above named service actually\n was installed and ");
+		printf(
+				"check and make sure you are a member of Administrators. \nError=%ld\n",
+				GetLastError());
+	} else {
+		printf("Event key deleted\n");
+	}
 
-  // build the path for the key
-  strcpy(strBuf, "SYSTEM\\CurrentControlSet\\");
-  strcat(strBuf, "Services\\EventLog\\Application\\");
-  strcat(strBuf, serviceName);
+	//
+	// This service deletes the service entry in the applet
+	//
+	// open a connection to the SCM
+	scm = OpenSCManager(0, 0, SC_MANAGER_CREATE_SERVICE);
+	if (!scm) {
+		printf("In OpenScManager %ld\n", GetLastError());
+	} else {
+		if (debug) {
+			printf(" ServiceControlManager opened\n");
+		}
+	}
+	//
+	// The service might already be installed, try to open it and delete
+	// it if it already exists
+	//
+	// Get the service's handle
+	service = OpenService(scm, serviceName,
+	SERVICE_ALL_ACCESS | DELETE);
+	if (debug) {
+		printf("Opened service %s to remove it.\n", serviceName);
+	}
 
-  // delete the key
-  ret=RegDeleteKey(HKEY_LOCAL_MACHINE, strBuf );
-  if (ret != ERROR_SUCCESS) {
-    printf( "Unable to delete key: Ensure that the above named service actually\n was installed and ");
-    printf("check and make sure you are a member of Administrators. \nError=%ld", GetLastError());
-  } else {
-          printf("Event key deleted\n");
-  }
+	if (service) {
+		printf("Deleting Service  \"%s\"\n", serviceName);
+		// Stop the service if necessary
+		success = QueryServiceStatus(service, &status);
+		if (!success)
+			printf("Failed in QueryServiceStatus with Error = %ld\n",
+					GetLastError());
+		if (status.dwCurrentState != SERVICE_STOPPED) {
+			printf("Stopping service...(this will take awhile)\n");
+			success = ControlService(service,
+			SERVICE_CONTROL_STOP, &status);
+			if (!success)
+				printf("Failed in ControlService with Error = %ld\n",
+						GetLastError());
+			if (debug) {
+				printf("About to sleep to give service a chance to stop.\n");
+			}
+			Sleep(5000);
+		}
+		// Remove the service
+		success = DeleteService(service);
+		if (success)
+			printf(" %s Service removed\n", serviceName);
+		else
+			printf("Failed in DeleteService with Error = %ld\n",
+					GetLastError());
+		Sleep(5000);
+		CloseServiceHandle(service);
+	}  // end of service opened
 
-  //
-  // This service deletes the service entry in the applet
-  //
+	CloseServiceHandle(scm);
+	if (debug) {
+		printf(" ServiceControlManager closed\n");
+	}
 
-  // open a connection to the SCM
-  scm = OpenSCManager(0, 0, SC_MANAGER_CREATE_SERVICE);
-  if (!scm)
-         printf("In OpenScManager %ld\n" ,GetLastError());
-  //
-  // The service might already be installed, try to open it and delete
-  // it if it already exists
-  //
-  // Get the service's handle
-  service = OpenService(
-          scm, serviceName,
-          SERVICE_ALL_ACCESS | DELETE);
-  if (service) {
-          printf("Deleting Service\n");
-       // Stop the service if necessary
-       success = QueryServiceStatus(service, &status);
-       if (!success)
-               printf("In QueryServiceStatus %ld\n", GetLastError());
-       if (status.dwCurrentState != SERVICE_STOPPED) {
-               printf("Stopping service...(this will take awhile)\n");
-               success = ControlService(service,
-                       SERVICE_CONTROL_STOP,
-                       &status);
-               if (!success)
-                       printf("In ControlService %ld\n", GetLastError());
-               Sleep(5000);
-       }
-       // Remove the service
-       success = DeleteService(service);
-       if (success)
-               printf(" %s Service removed\n", serviceName);
-       else
-               printf("In DeleteService %ld\n", GetLastError());
-           Sleep(5000);
-    CloseServiceHandle(service);
-  }  // end of service opened
+	//
+	// Lastly, we delete the application keys
+	//
 
-  CloseServiceHandle(scm);
+	// build the path for the new key
+	strcpy(strBuf, KEYPREFIX);
+	strcat(strBuf, serviceName);
+	if (debug) {
+		printf(" Path to registry keys is %s\n", strBuf);
+	}
 
+	// DELETE key for the new source
+	ret = RegDeleteKey(HKEY_LOCAL_MACHINE, strBuf);
+	if (ret != ERROR_SUCCESS) {
+		printf(
+				"Unable to delete key: Ensure that the above named service actually\n was installed and ");
+		printf(
+				"check and make sure you are a member of Administrators. \nError= %ld\n",
+				GetLastError());
+	} else {
+		printf("Registry key for application deleted.\n");
+	}
 
-  //
-  // Lastly, we delete the application keys
-  //
-
-  // build the path for the new key
-  strcpy(strBuf, KEYPREFIX);
-  strcat(strBuf, serviceName);
-
-  // DELETE key for the new source
-  ret=RegDeleteKey(HKEY_LOCAL_MACHINE, strBuf);
-  if (ret != ERROR_SUCCESS) {
-    printf("Unable to delete key: Ensure that the above named service actually\n was installed and ");
-    printf("check and make sure you are a member of Administrators. \nError= %ld\n", GetLastError());
-  } else {
-          printf( "Registry key for application deleted.\n");
-  }
-
-
-printf("Removal complete\n");
-  return 0;
+	printf("Removal complete\n");
+	return 0;
 }
-
-
 

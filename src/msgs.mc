@@ -160,5 +160,12 @@ Severity=Informational
 Facility=Application
 SymbolicName=DECRYPTED
 Language=English
-Password for user "%1" was decrypted, value is "%2" .
+Password for user "%1" was decrypted, value is "%2".
+.
+MessageId=
+Severity=Informational
+Facility=Application
+SymbolicName=DEBUG_MSG
+Language=English
+Debug message "%1".
 .

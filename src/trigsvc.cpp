@@ -9,12 +9,11 @@
  * Contributors:
  *   Jeff Lowrey, Wayne Schutz - Initial Contribution
  */
- 
+
 /* ******************************************************************/
 /* TrigSvc.cpp                                                      */
 /********************************************************************/
 //
-
 //
 // version 1.00 -- 04 May 1998 -- initial version.
 //              A version of the trigger monitor that can run as a NT Service.
@@ -40,7 +39,7 @@
 //          (2) A new key has been added to the registry to name the MQSeries
 //              DLL that we should use.  This allows the same executable
 //              to run as either a client or server and insulates us
-//              from any .LIB changes.	
+//              from any .LIB changes.
 //
 //
 // version 1.20 -- 5 Oct 1998 - wms
@@ -71,7 +70,7 @@
 //                 executable cannot be found.  This seems to be a problem with
 //                 the system() call, so, for this executable, we use the
 //                 CreateProcess windoze call instead.
-// version 1.32 -- 
+// version 1.32 --
 //          (1) linked with Notes API 6.0.1
 //          (2) Clean up error message regarding opening QMGR
 //          (3) Added "MQRC_Q_MGR_NAME_ERROR" retry condition
@@ -84,7 +83,6 @@
 //          see readme.txt
 // version 1.5.0 -- Jeff Lowrey now maintainer.
 //          see readme.txt for all future change log entries.
-
 #include <windows.h>
 #include <winbase.h>
 #include <Wincrypt.h>
@@ -587,7 +585,18 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 
 	if (ret != ERROR_SUCCESS) {
 		substr[0] = "RegOpenKeyEx";
-		sprintf(printstr, "%4d", ret);
+//		FormatMessage function with the FORMAT_MESSAGE_FROM_SYSTEM
+		LPVOID lpMsgBuf;
+//	    LPVOID lpDisplayBuf;
+		DWORD dw = GetLastError();
+//
+		FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf,
+				0, NULL);
+		sprintf(printstr, "%4d %s", ret, (LPTSTR) &lpMsgBuf);
 		substr[1] = printstr;
 		ReportEvent(logHandle, EVENTLOG_ERROR_TYPE, NULL, FUNCTION_ERR, NULL, 2,
 				0, substr, NULL);
@@ -750,6 +759,12 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 	}
 
 	RegCloseKey(keyhandle); // close the key handle .. done for now ...
+	if (valueEventLevel > 19) {
+		sprintf(printstr, "Completed loading basic registry keys.");
+		substr[1] = printstr;
+		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+				2, 0, substr, NULL);
+	}
 
 	if (success) {
 		mqHandle = LoadLibraryEx(valueMQdll, NULL, 0);
@@ -789,6 +804,14 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 				NULL, 2, 0, substr, NULL);
 				success = FALSE; // indicate time to end
 			}/* End if GET PROC ADDR FAILED */
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "%s", "Loaded all Procedure Addresses from MQ DLL.");
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
+
+
 		}/* End if !mqHandle */
 
 	}/* End if success */
@@ -803,7 +826,8 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 			substr[0] = printstr;
 			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, STARTED,
 			NULL, 1, 0, substr, NULL);
-		} // end event level test
+		}
+
 		  // Check for startup params, if they have been specified,
 		  // then overlay anything we got from the registry ....
 		if (argc > 1) {
@@ -847,6 +871,13 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 		pwchluid = pchlusername;
 		pwchlpw = pchannelpw;
 		pwmqcdversion = pmqcdversion;
+		if (valueEventLevel > 19) {
+			sprintf(printstr, "Initialized thread control structures.");
+			substr[1] = printstr;
+			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+					2, 0, substr, NULL);
+		}
+
 
 		i = 0;
 		while (*pwQNames && i < MAXTHREADS && (pwQNames < pQNames + lQNames)
@@ -873,6 +904,13 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 
 			pThrdCtl[i] = (PTHRDCTL) malloc(sizeof(THRDCTL));
 			memset(pThrdCtl[i], '\0', sizeof(THRDCTL));
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "Created thread control structure %d.",i);
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
+
 
 			pThrdCtl[i]->ThreadID = i; // save the index
 			pThrdCtl[i]->threadStatus = THREAD_STARTING;
@@ -884,7 +922,8 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 				substr[0] = printstr;
 				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL,
 				STARTED, NULL, 1, 0, substr, NULL);
-			} // end event level test
+			}
+
 			strcpy(pThrdCtl[i]->ServiceName, pwSNames); // save the service name
 			if (valueEventLevel > 10) {
 				sprintf(printstr, "Read service name of %s at position %d",
@@ -892,7 +931,8 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 				substr[0] = printstr;
 				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL,
 				STARTED, NULL, 1, 0, substr, NULL);
-			} // end event level test
+			}
+
 			strcpy(pThrdCtl[i]->QMgr, pwQMgrNames); // save the queue mgr name
 			strcpy(pThrdCtl[i]->CmdSvrQ, DEFAULTCMDSVRQ); // save the queue mgr name
 			strcpy(pThrdCtl[i]->NotesIni, pwNotesIni); // save the ini file name
@@ -930,6 +970,7 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 				DEBUG_ERR, NULL, 1, sizeof(pThrdCtl[i]->ServiceName), substr,
 						&(pThrdCtl[i]->ServiceName));
 			}
+
 			if (*pwQMgrNames)
 				pwQMgrNames += strlen(pwQMgrNames) + 1;
 			if (*pwNotesIni)
@@ -973,6 +1014,13 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 			i++;
 		} // end of the while
 
+		if (valueEventLevel > 19) {
+			sprintf(printstr, "%s", "Finished population of thread control structures.");
+			substr[1] = printstr;
+			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+					2, 0, substr, NULL);
+		}
+
 		// free the area we got to hold the names originally
 
 		if (pQNames)
@@ -1013,11 +1061,24 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 			free(pkaint);
 		if (pmqcdversion)
 			free(pmqcdversion);
+		if (valueEventLevel > 19) {
+			sprintf(printstr, "%s", "Cleaned up temporary thread control memory.");
+			substr[1] = printstr;
+			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+					2, 0, substr, NULL);
+		}
+
 
 		// Start the threads themselves ...
 		InitializeCriticalSection(&ThreadCritSect);
 		i = 0;
 		while (i < MAXTHREADS && pThrdCtl[i]) {
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "Creating thread %d", i);
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
 
 			// Start the service's thread
 			pThrdCtl[i]->threadHandle = CreateThread(0, 0,
@@ -1037,16 +1098,34 @@ void ServiceMain(DWORD argc, LPTSTR *argv) {
 			i++;
 
 		}/* End while */
+		if (valueEventLevel > 19) {
+			sprintf(printstr, "Finished creating threads");
+			substr[1] = printstr;
+			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+					2, 0, substr, NULL);
+		}
 
 	} // end if success
 
 	// Tell the SCM we're up and running ...
+	if (valueEventLevel > 19) {
+		sprintf(printstr, "Notifying Service Control Manager that we're running.");
+		substr[1] = printstr;
+		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+				2, 0, substr, NULL);
+	}
 	SendStatusToSCM(SERVICE_RUNNING, NO_ERROR, 0, 0, 0);
 
 	// Wait for stop signal, and then terminate
 	if (success)
 		WaitForSingleObject(terminateEvent, INFINITE);
 
+	if (valueEventLevel > 19) {
+		sprintf(printstr, "Received service stop event.");
+		substr[1] = printstr;
+		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+				2, 0, substr, NULL);
+	}
 	// If the thread has started kill it off and free the control block
 
 	for (i = 0; i < MAXTHREADS; i++) {
@@ -1177,15 +1256,20 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, STARTED_THREAD,
 		NULL, 1, 0, substr, NULL);
 	}
-	/* end event level test */
-	/* loop as long as we have a retry condition */
 
+	/* loop as long as we have a retry condition */
 	while (retry) {
 
 		EnterCriticalSection(&ThreadCritSect);
 		pThrdCtl->threadStatus = THREAD_RUNNING;
 		UpdateStatusFromThreads();
 		LeaveCriticalSection(&ThreadCritSect);
+		if (valueEventLevel > 19) {
+			sprintf(printstr, "Started thread and set status to running.");
+			substr[1] = printstr;
+			ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+					2, 0, substr, NULL);
+		}
 
 		Hcon = MQHC_UNUSABLE_HCONN;
 		Hobj = MQHO_UNUSABLE_HOBJ;
@@ -1196,16 +1280,22 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 			memset(temp, '\0', sizeof(temp));
 			char debugstr[1024];
 			memset(debugstr, '\0', sizeof(debugstr));
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "Connection name is not empty.");
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
 
 			strcpy(verb, "MQCONNX");
 
 			strncpy(ClientConn.ConnectionName, pThrdCtl->conName,
-			MQ_CONN_NAME_LENGTH);
+					MQ_CONN_NAME_LENGTH);
 			strcat(debugstr, "ConnectionName=");
 			strncat(debugstr, ClientConn.ConnectionName, MQ_CONN_NAME_LENGTH);
 
 			strncpy(ClientConn.ChannelName, pThrdCtl->channel,
-			MQ_CHANNEL_NAME_LENGTH);
+					MQ_CHANNEL_NAME_LENGTH);
 			strcat(debugstr, "; ChannelName=");
 			strncat(debugstr, ClientConn.ChannelName, MQ_CHANNEL_NAME_LENGTH);
 
@@ -1222,51 +1312,51 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 
 			if (pThrdCtl->scyExit[0] != ' ') {
 				strncpy(ClientConn.SecurityExit, pThrdCtl->scyExit,
-				MQ_EXIT_NAME_LENGTH);
+						MQ_EXIT_NAME_LENGTH);
 				strcat(debugstr, ";  SecurityExit=");
 				strncat(debugstr, ClientConn.SecurityExit, MQ_EXIT_NAME_LENGTH);
 			}
 
 			if (pThrdCtl->sendExit[0] != ' ') {
 				strncpy(ClientConn.SendExit, pThrdCtl->sendExit,
-				MQ_EXIT_NAME_LENGTH);
+						MQ_EXIT_NAME_LENGTH);
 				strcat(debugstr, ";  SendExit=");
 				strncat(debugstr, ClientConn.SendExit, MQ_EXIT_NAME_LENGTH);
 			}
 
 			if (pThrdCtl->rcvExit[0] != ' ') {
 				strncpy(ClientConn.ReceiveExit, pThrdCtl->rcvExit,
-				MQ_EXIT_NAME_LENGTH);
+						MQ_EXIT_NAME_LENGTH);
 				strcat(debugstr, ";  ReceiveExit=");
 				strncat(debugstr, ClientConn.ReceiveExit, MQ_EXIT_NAME_LENGTH);
 			}
 
 			if (pThrdCtl->scyData[0] != ' ') {
 				strncpy(ClientConn.SecurityUserData, pThrdCtl->scyData,
-				MQ_EXIT_DATA_LENGTH);
+						MQ_EXIT_DATA_LENGTH);
 				strcat(debugstr, ";  SecurityUserData=");
 				strncat(debugstr, ClientConn.SecurityUserData,
-				MQ_EXIT_DATA_LENGTH);
+						MQ_EXIT_DATA_LENGTH);
 			}
 
 			if (pThrdCtl->sendData[0] != ' ') {
 				strncpy(ClientConn.SendUserData, pThrdCtl->sendData,
-				MQ_EXIT_DATA_LENGTH);
+						MQ_EXIT_DATA_LENGTH);
 				strcat(debugstr, ";  SendUserData=");
 				strncat(debugstr, ClientConn.SendUserData, MQ_EXIT_DATA_LENGTH);
 			}
 
 			if (pThrdCtl->rcvData[0] != ' ') {
 				strncpy(ClientConn.ReceiveUserData, pThrdCtl->rcvData,
-				MQ_EXIT_DATA_LENGTH);
+						MQ_EXIT_DATA_LENGTH);
 				strcat(debugstr, ";  ReceiveUserData=");
 				strncat(debugstr, ClientConn.ReceiveUserData,
-				MQ_EXIT_DATA_LENGTH);
+						MQ_EXIT_DATA_LENGTH);
 			}
 
 			if (pThrdCtl->userid[0] != ' ') {
 				strncpy(ClientConn.UserIdentifier, pThrdCtl->userid,
-				MQ_USER_ID_LENGTH);
+						MQ_USER_ID_LENGTH);
 				strcat(debugstr, ";  UserIdentifier=");
 				strncat(debugstr, ClientConn.UserIdentifier, MQ_USER_ID_LENGTH);
 			}
@@ -1287,10 +1377,10 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 
 			if (pThrdCtl->sslciph[0] != ' ') {
 				strncpy(ClientConn.SSLCipherSpec, pThrdCtl->sslciph,
-				MQ_SSL_CIPHER_SPEC_LENGTH);
+						MQ_SSL_CIPHER_SPEC_LENGTH);
 				strcat(debugstr, ";  SSLCipherSpec=");
 				strncat(debugstr, ClientConn.SSLCipherSpec,
-				MQ_SSL_CIPHER_SPEC_LENGTH);
+						MQ_SSL_CIPHER_SPEC_LENGTH);
 			}
 
 			if (pThrdCtl->sslpeer[0] != ' ') {
@@ -1303,10 +1393,10 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 
 			if (pThrdCtl->locladdr[0] != ' ') {
 				strncpy(ClientConn.LocalAddress, pThrdCtl->locladdr,
-				MQ_LOCAL_ADDRESS_LENGTH);
+						MQ_LOCAL_ADDRESS_LENGTH);
 				strcat(debugstr, ";  LocalAddress=");
 				strncat(debugstr, ClientConn.LocalAddress,
-				MQ_LOCAL_ADDRESS_LENGTH);
+						MQ_LOCAL_ADDRESS_LENGTH);
 			}
 
 			Connect_options.Options = MQCNO_CLIENT_BINDING;
@@ -1394,6 +1484,12 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 				CompCode = MQCC_OK;
 				CReason = MQRC_NONE;
 			}
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "Received MQRC %d from MQCONNX.",CReason);
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
 
 		} else { // Just normal MQCONN connection
 			strcpy(verb, "MQCONN");
@@ -1409,6 +1505,12 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 			&Hcon, /* connection handle*/
 			&CompCode, /* completion code*/
 			&CReason); /* reason code*/
+			if (valueEventLevel > 19) {
+				sprintf(printstr, "Received MQRC %d from MQCONN.",CReason);
+				substr[1] = printstr;
+				ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, DEBUG_MSG, NULL,
+						2, 0, substr, NULL);
+			}
 		} // end of if client connection (connx)
 
 		if (CompCode == MQCC_OK) {
@@ -1530,8 +1632,10 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 
 						if (CReason != MQRC_NO_MSG_AVAILABLE) {
 							if (CReason == MQRC_NONE) {
-								if (triglen != buflen || memcmp(trigger.StrucId,
-								MQTM_STRUC_ID, sizeof(trigger.StrucId))) {
+								if (triglen != buflen
+										|| memcmp(trigger.StrucId,
+												MQTM_STRUC_ID,
+												sizeof(trigger.StrucId))) {
 									substr[0] = pThrdCtl->Queue;
 									sprintf(printstr,
 											"User = \"%.12s\", Appl = \"%.28s\", Msg Length = %ld",
@@ -1650,13 +1754,6 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 							if (md.Feedback == MQFB_QUIT)
 								CompCode = MQCC_FAILED; // exit the processing loop
 						}
-						//					rc = GetExitCodeProcess(pThrdCtl->servInfo->hProcess,&serviceStatus);
-						//					if (rc&&serviceStatus == STILL_ACTIVE) {
-						//						Sleep(sleepInterval*1000);
-						//					} else {
-						//						CloseHandle(pThrdCtl->servInfo->hProcess);
-						//						pThrdCtl->servInfo->hProcess = 0;
-						//					}
 					}
 					// while not done
 					launchMQService(pThrdCtl, false);
@@ -1755,7 +1852,7 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 				substr[2] = pThrdCtl->Queue;
 				substr[3] = pThrdCtl->QMgr;
 				ReportEvent(logHandle, EVENTLOG_ERROR_TYPE, NULL, MQAPI_ERR,
-						NULL, 4, 0, substr, NULL);
+				NULL, 4, 0, substr, NULL);
 			}
 		} // end of else not a qualifying condition
 	}/* End while number of retries */
@@ -1766,14 +1863,14 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 		sprintf(printstr, "%d", pThrdCtl->ThreadID);
 		substr[1] = printstr;
 		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, EXITING_THREAD,
-				NULL, 2, 0, substr, NULL);
+		NULL, 2, 0, substr, NULL);
 	} else if (pThrdCtl->ServiceName[0] != PLACEHOLDER) {
 		sprintf(printstr, "service %s", pThrdCtl->ServiceName);
 		substr[0] = printstr;
 		sprintf(printstr, "%d", pThrdCtl->ThreadID);
 		substr[1] = printstr;
 		ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, EXITING_THREAD,
-				NULL, 2, 0, substr, NULL);
+		NULL, 2, 0, substr, NULL);
 	} else {
 
 	}
@@ -1781,7 +1878,7 @@ DWORD ServiceThread(PTHRDCTL pThrdCtl) {
 	sprintf(printstr, "%d", pThrdCtl->ThreadID);
 	substr[1] = printstr;
 	ReportEvent(logHandle, EVENTLOG_INFORMATION_TYPE, NULL, EXITING_THREAD,
-			NULL, 2, 0, substr, NULL);
+	NULL, 2, 0, substr, NULL);
 
 	EnterCriticalSection(&ThreadCritSect);
 	pThrdCtl->threadStatus = THREAD_EXITING;
@@ -2072,23 +2169,6 @@ void launchMQService(PTHRDCTL thdCntl, bool start) {
 		}
 
 	}
-	/*	success = CreateProcess(command, args, 0, 0, FALSE, CREATE_NO_WINDOW, 0,
-	 0, &startUpInfo, &procInfo);
-	 if (!success) {
-	 if (GetLastError()==2) { // counldn't find executable
-	 substr[0] = command;
-	 ReportEvent(logHandle, EVENTLOG_WARNING_TYPE, NULL,
-	 PROC_NOEXEC, NULL, 1, 0, substr, NULL);
-	 } else {
-	 sprintf(printstr, "%.4d", GetLastError());
-	 substr[0] = printstr;
-	 ReportEvent(logHandle, EVENTLOG_WARNING_TYPE, NULL, PROC_WARN,
-	 NULL, 1, 0, substr, NULL);
-	 }
-	 }
-	 CloseHandle(procInfo.hThread);
-	 thdCntl->servInfo->hProcess = procInfo.hProcess;
-	 */
 	if (valueEventLevel > 10) {
 		sprintf(printstr, "Exited launchMQService");
 		substr[0] = printstr;
@@ -2225,7 +2305,7 @@ MQLONG getServiceInfo(MQHCONN Hconn, PTHRDCTL thdCntl) {
 				&(thdCntl->ServiceName));
 	}
 	memcpy(ObjDesc.ObjectName, "SYSTEM.DEFAULT.MODEL.QUEUE\0",
-	MQ_Q_NAME_LENGTH);
+			MQ_Q_NAME_LENGTH);
 	memcpy(ObjDesc.ObjectQMgrName, thdCntl->QMgr, MQ_Q_MGR_NAME_LENGTH);
 	DynamicQName = (MQCHAR48 *) malloc(MQ_Q_NAME_LENGTH + 1);
 	memset(DynamicQName, '\0', MQ_Q_NAME_LENGTH + 1);
@@ -2306,8 +2386,8 @@ MQLONG getServiceInfo(MQHCONN Hconn, PTHRDCTL thdCntl) {
 
 	/* Setup parameter block */
 	pPCFString->Type = MQCFT_STRING;
-	pPCFString->StrucLength =
-	MQCFST_STRUC_LENGTH_FIXED + MQ_SERVICE_NAME_LENGTH;
+	pPCFString->StrucLength = MQCFST_STRUC_LENGTH_FIXED
+			+ MQ_SERVICE_NAME_LENGTH;
 	pPCFString->Parameter = MQCA_SERVICE_NAME;
 	pPCFString->CodedCharSetId = MQCCSI_DEFAULT;
 	pPCFString->StringLength = strlen(thdCntl->ServiceName);
@@ -2555,7 +2635,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->ServiceName, '\0',
-					MQ_OBJECT_NAME_LENGTH + 1);
+							MQ_OBJECT_NAME_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->ServiceName,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2576,7 +2656,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->ServiceDesc, '\0',
-					MQ_SERVICE_DESC_LENGTH + 1);
+							MQ_SERVICE_DESC_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->ServiceDesc,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2597,7 +2677,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->AlterationDate, '\0',
-					MQ_CREATION_DATE_LENGTH + 1);
+							MQ_CREATION_DATE_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->AlterationDate,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2619,7 +2699,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->AlterationTime, '\0',
-					MQ_CREATION_TIME_LENGTH + 1);
+							MQ_CREATION_TIME_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->AlterationTime,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2641,7 +2721,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StartCommand, '\0',
-					MQ_SERVICE_COMMAND_LENGTH + 1);
+							MQ_SERVICE_COMMAND_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StartCommand,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2662,7 +2742,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StartArgs, '\0',
-					MQ_SERVICE_ARGS_LENGTH + 1);
+							MQ_SERVICE_ARGS_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StartArgs,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2683,7 +2763,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StopCommand, '\0',
-					MQ_SERVICE_COMMAND_LENGTH + 1);
+							MQ_SERVICE_COMMAND_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StopCommand,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2704,7 +2784,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StopArgs, '\0',
-					MQ_SERVICE_ARGS_LENGTH + 1);
+							MQ_SERVICE_ARGS_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StopArgs,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2726,7 +2806,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StdoutDestination, '\0',
-					MQ_SERVICE_PATH_LENGTH + 1);
+							MQ_SERVICE_PATH_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StdoutDestination,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
@@ -2749,7 +2829,7 @@ void parseServiceInfo(PTHRDCTL thdCntl, MQBYTE * pPCFMsg) {
 								substr, &(thdCntl->ServiceName));
 					}
 					memset(thdCntl->servInfo->StderrDestination, '\0',
-					MQ_SERVICE_PATH_LENGTH + 1);
+							MQ_SERVICE_PATH_LENGTH + 1);
 					StripTrailingBlanks(thdCntl->servInfo->StderrDestination,
 							pPCFString->String, pPCFString->StringLength);
 					if (valueEventLevel > 10) {
