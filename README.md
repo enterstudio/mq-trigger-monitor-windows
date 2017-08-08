@@ -5,7 +5,7 @@ An IBM MQ trigger monitor for Windows that runs as a Windows service.
 
 This was originally released as SupportPac MA7K.
 
-This repository and this code are in maintenance mode.  Any contributions are welcome, but as of the original issue date, no further builds or enhancements will be supplied by the original author or maintainers. 
+This repository and this code are in maintenance mode.  Any contributions are welcome, but as of the original repository creation date in 2014 no further builds or enhancements will be supplied by the original author or maintainers. 
 
 Possible Uses
 =============
